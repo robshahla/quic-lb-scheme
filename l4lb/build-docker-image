@@ -1,0 +1,29 @@
+#!/bin/bash
+
+docker build -t my-load-balancer .
+
+docker rm -f my-running-load-balancer
+
+#docker network create --ipv6 --subnet=2002:db8:2::/64 --subnet="172.18.0.0/16" quic-network
+
+docker run -d \
+--ip 172.18.1.2 \
+--cap-add NET_RAW \
+--cap-add NET_ADMIN \
+--network quic-network \
+--cap-add sys_ptrace \
+-p 2222:22 \
+-p 8888:8888/udp \
+-p 9999:9999/udp \
+--name my-running-load-balancer \
+my-load-balancer
+
+ssh-keygen -f "$HOME/.ssh/known_hosts" -R "[localhost]:2222"
+ssh-keygen -f "$HOME/.ssh/known_hosts" -R "172.20.0.4:2222"
+
+#docker run --net scheme-network --ip [2001:db8:2::2] -p [2001:db8:2::2]:6666:6666/udp \
+#-d --name my-running-load-balancer my-load-balancer
+
+# use this document to configure Clion to use docker as remote host: https://blog.jetbrains.com/clion/2020/01/using-docker-with-clion/
+
+#./proxygen/proxygen/_build/proxygen/httpserver/hq --mode=client --host=172.18.0.2 --port=6666 --path=10,20,30 --early_data=true --qlogger_path=.
