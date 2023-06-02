@@ -52,3 +52,4 @@
 ./quic-lb-proxygen/proxygen/_build/deps/fizz/build/bin/fizz-bogoshim
 ./quic-lb-proxygen/proxygen/_build/deps/fizz/build/bin/fizz
 ./quic-lb-proxygen/proxygen/_build/deps/fizz/build/lib/libfizz.a
+./quic-lb-proxygen/proxygen/_build/
