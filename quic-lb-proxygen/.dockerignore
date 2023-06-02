@@ -1,0 +1,4 @@
+.*
+cmake-build-debug
+cmake-build-debug/*
+run-proxygen-container.sh
