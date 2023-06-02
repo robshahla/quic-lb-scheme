@@ -31,7 +31,7 @@ RUN apt-get install -y \
 
 
 # RUN apt-get install python3-pip
-RUN pip3 install scapy
+RUN pip3 install scapy && pip3 install pyshark
 
 # RUN wget https://www.python.org/ftp/python/3.9.0/Python-3.9.0.tar.xz && \
 #     tar -xf Python-3.9.0.tar.xz && \
@@ -57,10 +57,19 @@ COPY sshd_config_test_clion /etc/ssh/sshd_config_test_clion
 
 RUN mkdir /run/sshd
 
+
+RUN apt-get update && apt-get install -y openssh-server
+# RUN mkdir /var/run/sshd
+# RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+# RUN /etc/init.d/ssh restart
+RUN echo 'root:mypassword' | chpasswd
+# RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
 RUN useradd -m user && yes password | passwd user
 
 RUN usermod -s /bin/bash user
 RUN usermod -aG sudo user
+RUN chmod 777 loadBalancer.py
+
 
 EXPOSE 8888/udp
 EXPOSE 22

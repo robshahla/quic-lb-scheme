@@ -1,6 +1,7 @@
 *.idea*
 *.a
 *cmake-build*
+.vscode
 ./quic-lb-proxygen/proxygen/_build/bin/proxygen_h3datagram_client
 ./quic-lb-proxygen/proxygen/_build/bin/proxygen_echo
 ./quic-lb-proxygen/proxygen/_build/bin/proxygen_httperf2
