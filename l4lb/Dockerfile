@@ -27,7 +27,7 @@ RUN apt-get install -y \
     host \
     mtr-tiny \
     tcpdump \
-    python3-pip \
+    python3-pip
 
 # RUN echo no | apt-get install -y tshark
 
