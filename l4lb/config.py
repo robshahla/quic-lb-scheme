@@ -1,7 +1,6 @@
 SERVERS_NUMBER = 2
 SERVERS_PORT = 6666
 
-
 def generate_server_ip_address(server_index):
     """
     Generate IP address for the backend server.
@@ -17,8 +16,9 @@ def generate_server_mac_address(server_index):
     :param server_index: the index of the backend server
     :return: the MAC address of the server with the given index
     """
-    # todo: this works only for up to 9 backend servers, if we want to add more,
+    # todo: this works only for up to 7 backend servers, if we want to add more,
     #  the mac address should be in hex and not in decimal as it is now
+    assert server_index < 7
     return "02:42:ac:12:02:0" + str(server_index + 2)
 
 

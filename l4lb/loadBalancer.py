@@ -9,20 +9,19 @@ from pyshark.packet.fields import LayerField, LayerFieldsContainer
 from scapy.layers.dot11 import RadioTap
 from scapy.utils import *
 from config import *
+import random
 
-
+VERSION = 3
 HEX_BASE = 16
 BIN_BASE = 2
-counter = 0
 BYTE_LENGTH = 8
+counter = 0
 
 
 class LoadBalancer:
     def __init__(self):
         # todo: add outside variables to here and implement the ecmp table and the other tables
-        self.backend_servers = [
-            ("s0", "172.18.2.2", SERVERS_PORT, "02:42:ac:12:02:02")
-        ]
+        self.servers = [(f"s{i}", generate_server_ip_address(i), SERVERS_PORT, generate_server_mac_address(i)) for i in range(SERVERS_NUMBER)]
         self.CID_LENGTH = 8  # in bytes, server-allocated CIDs
         self.LOAD_BALANCER_MAC = get_load_balancer_mac_address()
 
@@ -49,7 +48,7 @@ class LoadBalancer:
         :param server_index: the index of the backend server
         :return: the IP of the backend server
         """
-        return self.backend_servers[server_index][1]
+        return self.servers[server_index][1]
 
     def get_backend_server_port(self, server_index):
         """
@@ -57,7 +56,7 @@ class LoadBalancer:
         :param server_index: the index of the backend server
         :return: the port of the backend server
         """
-        return self.backend_servers[server_index][2]
+        return self.servers[server_index][2]
 
     def get_backend_server_mac(self, server_index):
         """
@@ -65,7 +64,7 @@ class LoadBalancer:
         :param server_index: the index of the backend server
         :return: the MAC address of the backend server
         """
-        return self.backend_servers[server_index][3]
+        return self.servers[server_index][3]
 
     def is_long_header(self, cid: str):
         """
@@ -116,7 +115,7 @@ class LoadBalancer:
         if "UDP" in packet:
             udp = UDP(sport=packet[UDP].sport, dport=self.get_backend_server_port(backend_server_index))
 
-        print(f"four tuple: {packet[IP].src}:{packet[UDP].sport} -> {packet[IP].dst}:{packet[UDP].dport}")
+        print(f"four tuple: {packet[IP].src}:{packet[UDP].sport} -> {ip.dst}:{udp.dport}")
 
         data = packet[Raw].load
         print("Raw data: ", data)
@@ -130,7 +129,7 @@ class LoadBalancer:
         :param packet: the received packet from the client
         :return: the index of the backend server to send the packet to
         """
-        return 0
+        return random.randint(0, 1)  # todo: the random should be generated only for long header packets, use 5-tuple hash instead of random
 
     def handle_packet(self, packet):
         print("packet received")
@@ -141,9 +140,9 @@ class LoadBalancer:
 
         print("hex quic headers: ", cid)
 
-        backend_server_index = self.get_routing_decision(packet)
+        server_index = self.get_routing_decision(packet)
 
-        new_packet = self.get_new_packet(packet, backend_server_index)
+        new_packet = self.get_new_packet(packet, server_index)
         sendp(new_packet, iface="eth0", verbose=0)
 
         counter += 1
@@ -151,7 +150,7 @@ class LoadBalancer:
         print("------------------------")
 
     def sniff(self):
-        print("starting load balancer on: ", socket.gethostname())
+        print(f"starting load balancer version {VERSION} on: ", socket.gethostname())
 
         print("creating socket and binding to port 8888")
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
