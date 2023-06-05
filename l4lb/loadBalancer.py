@@ -8,21 +8,64 @@ from pyshark.packet.packet import Packet
 from pyshark.packet.fields import LayerField, LayerFieldsContainer
 from scapy.layers.dot11 import RadioTap
 from scapy.utils import *
+from config import *
 
-BACKEND_SERVER_IP = "172.18.2.2"
-BACKEND_SERVER_PORT = 6666
-BYTE_LENGTH = 8
+
 HEX_BASE = 16
 BIN_BASE = 2
-CID_LENGTH = 8  # in bytes, server-allocated CIDs
-LOAD_BALANCER_MAC = "02:42:ac:12:01:02"
 counter = 0
+BYTE_LENGTH = 8
 
 
 class LoadBalancer:
     def __init__(self):
         # todo: add outside variables to here and implement the ecmp table and the other tables
+        self.backend_servers = [
+            ("s0", "172.18.2.2", SERVERS_PORT, "02:42:ac:12:02:02")
+        ]
+        self.CID_LENGTH = 8  # in bytes, server-allocated CIDs
+        self.LOAD_BALANCER_MAC = get_load_balancer_mac_address()
+
         pass
+
+    def get_cid_from_tcpdump(self, packet):
+        """
+        Get the destination connection id from the quic packet.
+        Use tcpdump to read the raw packet and parse it as a QUIC packet, then retrieve the
+        relevant DCID value.
+        :param packet:
+        :return: the DCID value
+        """
+        dcid = None
+        packet_dump = json.load(tcpdump(packet, prog=conf.prog.tshark, getfd=True, args=["-T", "json", "-O", "quic"]))
+        if "quic" in packet_dump[0]["_source"]["layers"]:
+            dcid = packet_dump[0]["_source"]["layers"]["quic"]["quic.dcid"]
+            print("DCID IS: ", dcid)
+        return dcid
+
+    def get_backend_server_ip(self, server_index):
+        """
+        Get the IP of the backend server with the given index.
+        :param server_index: the index of the backend server
+        :return: the IP of the backend server
+        """
+        return self.backend_servers[server_index][1]
+
+    def get_backend_server_port(self, server_index):
+        """
+        Get the port of the backend server with the given index.
+        :param server_index: the index of the backend server
+        :return: the port of the backend server
+        """
+        return self.backend_servers[server_index][2]
+
+    def get_backend_server_mac(self, server_index):
+        """
+        Get the MAC address of the backend server with the given index.
+        :param server_index: the index of the backend server
+        :return: the MAC address of the backend server
+        """
+        return self.backend_servers[server_index][3]
 
     def is_long_header(self, cid: str):
         """
@@ -53,58 +96,62 @@ class LoadBalancer:
             print("short header")
             # the DCID is in the 2nd byte of the short header, and its length is known by the LB,
             # decided by the system designer with consensus with the backend server.
-            bin_cid = bin_header[1 * BYTE_LENGTH:1 * BYTE_LENGTH + CID_LENGTH * BYTE_LENGTH]
+            bin_cid = bin_header[1 * BYTE_LENGTH:1 * BYTE_LENGTH + self.CID_LENGTH * BYTE_LENGTH]
         # bin_cid = (int(hex_cid, base)).zfill(len(hex_cid) * 4)
         print("calculated hex cid: ", hex(int(bin_cid, BIN_BASE)))
         return bin_cid
 
-    def get_new_packet(self, packet, destination_ip, destination_port):
+    def get_new_packet(self, packet, backend_server_index: int):
         """
         Build a new packet to send to the backend server.
         The new packet is built by replacing the destination IP and port of the original packet with the
         destination IP and port of the backend server, and keeping the rest of the packet unchanged.
         :param packet: the received packet from the client
-        :param destination_ip: the IP of the backend server
-        :param destination_port: the port of the backend server
+        :param backend_server_index: the index of the backend server to send the packet to
         :return: the new constructed packet
         """
         if "IP" in packet:
-            ip = IP(src=packet[IP].src, dst=destination_ip)
+            ip = IP(src=packet[IP].src, dst=self.get_backend_server_ip(backend_server_index))
 
         if "UDP" in packet:
-            udp = UDP(sport=packet[UDP].sport, dport=destination_port)
+            udp = UDP(sport=packet[UDP].sport, dport=self.get_backend_server_port(backend_server_index))
 
         print(f"four tuple: {packet[IP].src}:{packet[UDP].sport} -> {packet[IP].dst}:{packet[UDP].dport}")
 
         data = packet[Raw].load
         print("Raw data: ", data)
-        ether = Ether(src=LOAD_BALANCER_MAC, dst="02:42:ac:12:02:02")  # todo: change the dst mac address to be read from an ecmp table based on the destination ip or server name
+        ether = Ether(src=self.LOAD_BALANCER_MAC, dst=self.get_backend_server_mac(backend_server_index))
         new_packet = ether/ip/udp/data
         return new_packet
+
+    def get_routing_decision(self, packet) -> int:
+        """
+        Get the routing decision for the packet.
+        :param packet: the received packet from the client
+        :return: the index of the backend server to send the packet to
+        """
+        return 0
 
     def handle_packet(self, packet):
         print("packet received")
         global counter
-        print(tcpdump(packet))
-
-        packet_dump = json.load(tcpdump(packet, prog=conf.prog.tshark, getfd=True, args=["-T", "json", "-O", "quic"]))
-        if "quic" in packet_dump[0]["_source"]["layers"]:
-            print("DCID IS: ", packet_dump[0]["_source"]["layers"]["quic"]["quic.dcid"])
 
         quic_packet = packet[UDP].payload
         cid = self.get_dcid(quic_packet)
 
         print("hex quic headers: ", cid)
 
-        new_packet = self.get_new_packet(packet, BACKEND_SERVER_IP, BACKEND_SERVER_PORT)
+        backend_server_index = self.get_routing_decision(packet)
+
+        new_packet = self.get_new_packet(packet, backend_server_index)
         sendp(new_packet, iface="eth0", verbose=0)
 
         counter += 1
         print("counter value: ", counter)
         print("------------------------")
 
-    def scapy_sniff(self):
-        print("starting load balancer")
+    def sniff(self):
+        print("starting load balancer on: ", socket.gethostname())
 
         print("creating socket and binding to port 8888")
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -140,5 +187,5 @@ class LoadBalancer:
 
 if __name__ == '__main__':
     lb = LoadBalancer()
-    lb.scapy_sniff()
+    lb.sniff()
     # lb.pyshark_sniff()

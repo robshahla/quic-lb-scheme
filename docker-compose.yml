@@ -1,4 +1,14 @@
 version: "3.5"
+networks:
+  scheme-network:
+    name: scheme-network
+    driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv6: "true"
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16
+    
 services:
   my-running-load-balancer:
     hostname: my-running-load-balancer
@@ -13,32 +23,8 @@ services:
     networks:
       scheme-network:
         ipv4_address: 172.18.1.2
-#    command: >-
-#      sh -c "apt-get install -y conntrack &&
-#      iptables -A FORWARD -i eth1 -j ACCEPT &&
-#      iptables -A FORWARD -i eth0 -j ACCEPT &&
-#      iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE &&
-#      iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE &&
-#      tail -f /dev/null"
-#      ip route add 172.18.0.0/16 via 172.18.1.2 &&
-
-#      echo running load balancer; \
-#      echo finished running load balancer
-
-#      python3 /usr/src/loadBalancer.py; \
-#      tail -f /dev/null"
-#      g++ loadBalancer.cpp -o loadBalancer &&
-#      ./loadBalancer loadBalancer"
-
-#      iptables -A FORWARD -i eth0 -p udp --dport 8888 -d 172.18.0.3 -j ACCEPT &&
-#      iptables -t nat -A PREROUTING -i eth0 -p udp --dport 8888 -j DNAT --to 172.18.0.3:6666 &&
-#      /usr/sbin/sshd -D -e -f /etc/ssh/sshd_config_test_clion"
-
-
-#      iptables -t nat -A OUTPUT -o eth0 -p udp --dport 8888 -j DNAT --to-destination 172.18.0.3:6666 &&
-#  iptables -t nat -A PREROUTING -i eth0 -p udp --dport 8888 -j DNAT --to 172.18.0.3:6666 &&
-# This nat is for DSR mode, where it is the default gateway for the
-# backend servers.
+    mac_address: 02:42:ac:12:01:02
+    
   my-running-nat:
     hostname: my-running-nat
     container_name: my-running-nat
@@ -55,58 +41,7 @@ services:
     command: >-
       sh -c "apt-get install -y conntrack &&
       tail -f /dev/null"
-
-#      iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE &&
-#      iptables -A FORWARD -i eth0 -j ACCEPT &&
-  #      iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE &&
-#      iptables -A FORWARD -i eth1 -j ACCEPT &&
-#      sh -c "iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE &&
-#      iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE &&
-#      iptables -A FORWARD -i eth1 -j ACCEPT &&
-#      iptables -A FORWARD -i eth0 -j ACCEPT &&
-#      iptables -t nat -A PREROUTING -s 172.19.1.2:8888 -i eth0 -p udp -j MASQUERADE &&
-#      tail -f /dev/null"
-#      ip route add 172.19.0.0/16 via 172.19.0.2 &&
-#      g++ loadBalancer.cpp -o loadBalancer &&
-#      ./loadBalancer NAT"
-
-  my-proxygen-server:
-    hostname: my-proxygen-server
-    container_name: my-proxygen-server
-    image: my-proxygen
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-      - sys_ptrace
-    ports:
-      - "6666:6666/udp"
-    networks:
-      scheme-network:
-        ipv4_address: 172.18.2.2
-    volumes:
-      - ./quic-lb-proxygen:/usr/src/proxygen
-    links:
-      - my-running-nat
-    command: >-
-      sh -c "apt-get install -y iproute2 iptables tcpdump conntrack &&
-      ip route del 172.18.0.0/16 &&
-      ip r a 172.18.0.0/16 via 172.18.1.3 dev eth0 onlink &&
-      ip route del default &&
-      ip r a default via 172.18.1.3 dev eth0 onlink &&
-      tail -f /dev/null"
-
-#./proxygen/proxygen/_build/proxygen/httpserver/hq --mode=server --qlogger_path=. --host=172.18.2.2 --port=6666 --early_data=true"
-
-#todo: retunr packet through the nat.
-#      ip route add 172.18.0.0/16 via 172.18.1.3
-#      ip route del default &&
-#      ip route add default via 172.18.1.3 &&
-#      iptables -t nat -A POSTROUTING -p udp -o eth0 -j SNAT --to 172.19.1.2:6666 &&
-#      iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE &&
-#      iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE &&
-#      iptables -A FORWARD -i eth1 -j ACCEPT &&
-#      iptables -A FORWARD -i eth0 -j ACCEPT &&
-
+    
   my-running-client:
     hostname: my-running-client
     container_name: my-running-client
@@ -121,35 +56,52 @@ services:
     command: >-
       sh -c "apt-get install -y iproute2 iptables conntrack tcpdump &&
       tail -f /dev/null"
-#      ip route del default &&
-#      ip route add default via 172.19.1.2 &&
-#      conntrack -D -p udp &&
-
-#  &&
-#  iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE &&
-#  iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE &&
-#  iptables -A FORWARD -i eth1 -j ACCEPT &&
-#  iptables -A FORWARD -i eth0 -j ACCEPT &&
-#  tail -f /dev/null
-#      ip route del default &&
-#      ip route del 172.19.0.0/16 &&
-#      ip route del 172.18.0.0/16 &&
-#      ip r a 172.19.0.0/16 via 172.19.1.2 dev eth0 onlink &&
-#      ip r a 172.18.0.0/16 via 172.19.1.2 dev eth0 onlink &&
-
-networks:
-  scheme-network:
-    driver: bridge
-    driver_opts:
-      com.docker.network.enable_ipv6: "true"
-    ipam:
-      config:
-        - subnet: 172.18.0.0/16
-#  clients-network:
-#    name: clients-network
-#    driver: bridge
-#    driver_opts:
-#      com.docker.network.enable_ipv6: "true"
-#    ipam:
-#      config:
-#        - subnet: 172.19.0.0/16
+    
+  my-proxygen-server-0:
+    hostname: my-proxygen-server
+    container_name: my-proxygen-server-0
+    image: my-proxygen
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - sys_ptrace
+    networks:
+      scheme-network:
+        ipv4_address: 172.18.2.2
+    mac_address: 02:42:ac:12:02:02
+    volumes:
+      - ./quic-lb-proxygen:/usr/src/proxygen
+    links:
+      - my-running-nat
+    command: >-
+      sh -c "apt-get install -y iproute2 iptables tcpdump conntrack &&
+      ip route del 172.18.0.0/16 &&
+      ip r a 172.18.0.0/16 via 172.18.1.3 dev eth0 onlink &&
+      ip route del default &&
+      ip r a default via 172.18.1.3 dev eth0 onlink &&
+      ./proxygen/proxygen/_build/proxygen/httpserver/hq --mode=server --qlogger_path=. --host=172.18.2.2 --port=6666 --early_data=true"
+    
+  my-proxygen-server-1:
+    hostname: my-proxygen-server
+    container_name: my-proxygen-server-1
+    image: my-proxygen
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - sys_ptrace
+    networks:
+      scheme-network:
+        ipv4_address: 172.18.2.3
+    mac_address: 02:42:ac:12:02:03
+    volumes:
+      - ./quic-lb-proxygen:/usr/src/proxygen
+    links:
+      - my-running-nat
+    command: >-
+      sh -c "apt-get install -y iproute2 iptables tcpdump conntrack &&
+      ip route del 172.18.0.0/16 &&
+      ip r a 172.18.0.0/16 via 172.18.1.3 dev eth0 onlink &&
+      ip route del default &&
+      ip r a default via 172.18.1.3 dev eth0 onlink &&
+      ./proxygen/proxygen/_build/proxygen/httpserver/hq --mode=server --qlogger_path=. --host=172.18.2.3 --port=6666 --early_data=true"
+    
