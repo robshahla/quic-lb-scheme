@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmvfst_d6d_types.a  CMakeFiles/mvfst_d6d_types.dir/Types.cpp.o
+/usr/bin/ranlib libmvfst_d6d_types.a

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmvfst_d6d_state_functions.a  CMakeFiles/mvfst_d6d_state_functions.dir/QuicD6DStateFunctions.cpp.o
+/usr/bin/ranlib libmvfst_d6d_state_functions.a
