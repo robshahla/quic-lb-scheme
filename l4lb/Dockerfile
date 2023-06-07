@@ -32,7 +32,7 @@ RUN apt-get install -y \
 # RUN echo no | apt-get install -y tshark
 
 # RUN apt-get install python3-pip
-RUN pip3 install scapy && pip3 install pyshark
+RUN pip3 install scapy && pip3 install pyshark && pip3 install xxhash
 
 # RUN wget https://www.python.org/ftp/python/3.9.0/Python-3.9.0.tar.xz && \
 #     tar -xf Python-3.9.0.tar.xz && \

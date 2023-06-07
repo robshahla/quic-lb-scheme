@@ -1,8 +1,9 @@
-from scapy.all import *
 import socket
+import xxhash
 import pyshark
 import pickle
 import json
+from scapy.all import *
 from pyshark.packet.common import Pickleable
 from pyshark.packet.packet import Packet
 from pyshark.packet.fields import LayerField, LayerFieldsContainer
@@ -16,6 +17,15 @@ HEX_BASE = 16
 BIN_BASE = 2
 BYTE_LENGTH = 8
 counter = 0
+
+
+def get_four_tuple(packet) -> str:
+    """
+    Get the four tuple of the packet.
+    :param packet: the packet
+    :return: the four tuple of the packet as a string
+    """
+    return str(packet[IP].src) + str(packet[IP].dst) + str(packet[UDP].sport) + str(packet[UDP].dport)
 
 
 class LoadBalancer:
@@ -123,13 +133,23 @@ class LoadBalancer:
         new_packet = ether/ip/udp/data
         return new_packet
 
+    def four_tuple_hash(self, packet):
+        """
+        Get the 4-tuple hash of the packet.
+        :param packet: the received packet from the client
+        :return: the 4-tuple hash of the packet
+        """
+        h = xxhash.xxh32(get_four_tuple(packet))
+        return h.intdigest()
+
     def get_routing_decision(self, packet) -> int:
         """
         Get the routing decision for the packet.
         :param packet: the received packet from the client
         :return: the index of the backend server to send the packet to
         """
-        return random.randint(0, 1)  # todo: the random should be generated only for long header packets, use 5-tuple hash instead of random
+        return self.four_tuple_hash(packet) % SERVERS_NUMBER
+        # return random.randint(0, 1)  # todo: the random should be generated only for long header packets, use 5-tuple hash instead of random
 
     def handle_packet(self, packet):
         print("packet received")
@@ -141,7 +161,7 @@ class LoadBalancer:
         print("hex quic headers: ", cid)
 
         server_index = self.get_routing_decision(packet)
-
+        print("routing decision: ", server_index)
         new_packet = self.get_new_packet(packet, server_index)
         sendp(new_packet, iface="eth0", verbose=0)
 
