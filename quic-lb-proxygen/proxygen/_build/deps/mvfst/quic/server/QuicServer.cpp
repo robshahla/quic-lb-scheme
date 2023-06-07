@@ -21,11 +21,73 @@
 #include <quic/server/QuicServerTransport.h>
 #include <quic/server/QuicSharedUDPSocketFactory.h>
 #include <quic/server/SlidingWindowRateLimiter.h>
+#include <stdio.h>
+#include <iostream>
+#include <string>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <ifaddrs.h>
+#include <netinet/in.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <sstream>
 
 FOLLY_GFLAGS_DEFINE_bool(
     qs_io_uring_use_async_recv,
     true,
     "io_uring backend use async recv");
+
+/*
+ * convertToFirstNibble: converts the last two nibbles of an IP address to an integer,
+ * the before last nibble is multiplied by 1000 and added to the last nibble
+ * @param ipAddress: the IP address to convert
+ * @return: the last two nibbles of the IP address as an integer
+ * */
+int convertToFirstNibble(const char* ipAddress) {
+    if (ipAddress == nullptr) {
+        return 0;
+    }
+    std::stringstream ss(ipAddress);
+    std::string token;
+    std::string lastToken;
+    std::string beforeLastToken;
+
+    while (std::getline(ss, token, '.')) {
+        beforeLastToken = lastToken;
+        lastToken = token;
+    }
+
+    int value = std::stoi(lastToken);
+    value += std::stoi(beforeLastToken) * 1000;
+    return value;
+}
+
+char* getIpAddress() {
+    struct ifaddrs * ifAddrStruct = nullptr;
+    struct ifaddrs * ifa = nullptr;
+
+    getifaddrs(&ifAddrStruct);
+
+    for (ifa = ifAddrStruct; ifa != nullptr; ifa = ifa->ifa_next) {
+        if (!ifa->ifa_addr || strcmp(ifa->ifa_name,"eth0") != 0) {
+            continue;
+        }
+        if (ifa->ifa_addr->sa_family == AF_INET) { // check it is IP4
+            // is a valid IP4 Address
+//            tmpAddrPtr=&((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
+//            char addressBuffer[INET_ADDRSTRLEN];
+            //inet_ntoa(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
+            //std::cout << inet_ntoa(((struct sockaddr_in *)ifa->ifa_addr)->sin_addr) << std::endl;
+            //std::cout << inet_addr(inet_ntoa(((struct sockaddr_in *)ifa->ifa_addr)->sin_addr)) << std::endl;
+            //printf("%s IP Address %s\n", ifa->ifa_name, addressBuffer);
+            //const char* ip = "172.18.2.3";
+            return inet_ntoa(((struct sockaddr_in *)ifa->ifa_addr)->sin_addr);
+//            std::cout << f << std::endl;
+            //std::cout << inet_addr(ip.substr(0,'.')) << "----" << inet_addr("172.18.2.3") << std::endl;
+        }
+    }
+    return nullptr;
+}
 
 namespace quic {
 namespace {
@@ -126,7 +188,7 @@ void QuicServer::start(const folly::SocketAddress& address, size_t maxWorkers) {
     auto workerEvb = workerEvbs_.back()->getEventBase();
     evbs.push_back(workerEvb);
   }
-  this->setHostId(5);
+  this->setHostId(convertToFirstNibble(getIpAddress()));
   initialize(address, evbs, true /* useDefaultTransport */);
   start();
 }
