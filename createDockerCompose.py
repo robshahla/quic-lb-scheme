@@ -29,7 +29,7 @@ def get_server_compose_entry(server_index):
       ip r a 172.18.0.0/16 via 172.18.1.3 dev eth0 onlink &&
       ip route del default &&
       ip r a default via 172.18.1.3 dev eth0 onlink &&
-      ./proxygen/proxygen/_build/proxygen/httpserver/hq --mode=server --qlogger_path=. --host={generate_server_ip_address(server_index)} --port={SERVERS_PORT} --early_data=true\"
+      ./proxygen/proxygen/_build/proxygen/httpserver/hq --mode=server --host={generate_server_ip_address(server_index)} --port={SERVERS_PORT} --early_data=true\"
     \n"""
 
     return server_compose_entry

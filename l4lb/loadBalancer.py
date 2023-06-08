@@ -37,6 +37,10 @@ class LoadBalancer:
         }
 
         print("load balancer started, using routing policy: ", routing_policy)
+        print("servers info: ")
+        for server in self.servers:
+            print(server)
+
         self.get_routing_decision = self.routing_decision[routing_policy]
 
     def get_cid_from_tcpdump(self, packet):
@@ -96,7 +100,7 @@ class LoadBalancer:
         print(f"four tuple: {packet[IP].src}:{packet[UDP].sport} -> {ip.dst}:{udp.dport}")
 
         data = packet[Raw].load
-        print("Raw data: ", data)
+        # print("Raw data: ", data)
         ether = Ether(src=self.LOAD_BALANCER_MAC, dst=self.get_backend_server_mac(backend_server_index))
         new_packet = ether/ip/udp/data
         return new_packet
