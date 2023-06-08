@@ -97,6 +97,15 @@ services:
       ip r a default via 172.18.1.3 dev eth0 onlink &&
       ./proxygen/proxygen/_build/proxygen/httpserver/hq --mode=server --qlogger_path=. --host=172.18.2.2 --port=6666 --early_data=true"
 
+#      pip3 install --upgrade setuptools &&
+#      pip3 install gdbgui &&
+#      pip3 install --upgrade gdbgui &&
+#      apt-get install -y gdbserver &&
+#      apt-get install -y gdb &&
+#      tail -f /dev/null"
+#      ./proxygen/proxygen/_build/proxygen/httpserver/hq --mode=server --qlogger_path=. --host=172.18.2.2 --port=6666 --early_data=true"
+
+
 #    links:
 #      - my-running-nat
 #      tail -f /dev/null"

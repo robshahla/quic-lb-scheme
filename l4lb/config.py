@@ -1,5 +1,23 @@
+VERSION = 3
+HEX_BASE = 16
+BIN_BASE = 2
+BYTE_LENGTH = 8
+HOST_ID_LENGTH = 2  # in bytes, host-allocated CIDs (the server ID)
 SERVERS_NUMBER = 2
+CID_LENGTH = 8  # in bytes, server-allocated CIDs
 SERVERS_PORT = 6666
+SERVERS_BASE_ADDRESS = "172.18"
+
+
+def get_ip_from_two_nibbles(nibble_1, nibble_2):
+    """
+    Generate IP address from two nibbles.
+    :param nibble_1: the first nibble
+    :param nibble_2: the second nibble
+    :return: the IP address
+    """
+    return SERVERS_BASE_ADDRESS + f".{nibble_2}.{nibble_1}"
+
 
 def generate_server_ip_address(server_index):
     """
@@ -7,7 +25,12 @@ def generate_server_ip_address(server_index):
     :param server_index: the index of the backend server
     :return: the IP address of the server with the given index
     """
-    return "172.18.2." + str(server_index + 2)
+    nibble_1 = server_index + 2
+    nibble_2 = 2
+    if server_index > 252:
+        nibble_1 = server_index % 252
+        nibble_2 = server_index // 252 + 2
+    return get_ip_from_two_nibbles(nibble_1, nibble_2)
 
 
 def generate_server_mac_address(server_index):

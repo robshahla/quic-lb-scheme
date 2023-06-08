@@ -3,6 +3,8 @@ import xxhash
 import pyshark
 import pickle
 import json
+import random
+from cid import *
 from scapy.all import *
 from pyshark.packet.common import Pickleable
 from pyshark.packet.packet import Packet
@@ -10,12 +12,7 @@ from pyshark.packet.fields import LayerField, LayerFieldsContainer
 from scapy.layers.dot11 import RadioTap
 from scapy.utils import *
 from config import *
-import random
 
-VERSION = 3
-HEX_BASE = 16
-BIN_BASE = 2
-BYTE_LENGTH = 8
 counter = 0
 
 
@@ -29,13 +26,18 @@ def get_four_tuple(packet) -> str:
 
 
 class LoadBalancer:
-    def __init__(self):
+    def __init__(self, routing_policy: str):
         # todo: add outside variables to here and implement the ecmp table and the other tables
         self.servers = [(f"s{i}", generate_server_ip_address(i), SERVERS_PORT, generate_server_mac_address(i)) for i in range(SERVERS_NUMBER)]
-        self.CID_LENGTH = 8  # in bytes, server-allocated CIDs
+        self.ip_address_to_server_index = {self.servers[i][1]: i for i in range(SERVERS_NUMBER)}
         self.LOAD_BALANCER_MAC = get_load_balancer_mac_address()
+        self.routing_decision = {
+            "four_tuple_hash": self.get_four_tuple_hash_routing_decision,
+            "routable_cid": self.get_cid_routing_decision,
+        }
 
-        pass
+        print("load balancer started, using routing policy: ", routing_policy)
+        self.get_routing_decision = self.routing_decision[routing_policy]
 
     def get_cid_from_tcpdump(self, packet):
         """
@@ -76,40 +78,6 @@ class LoadBalancer:
         """
         return self.servers[server_index][3]
 
-    def is_long_header(self, cid: str):
-        """
-        Check if the packet is a long header packet or not.
-        following RFC 9000, long header packets have the first bit of the first byte set to 1.
-        :param cid:
-        :return: True if the packet is a long header packet, False otherwise.
-        """
-        return cid[0] == "1"
-
-    def get_dcid(self, quic_packet_udp_payload) -> str:
-        """
-        Get the destination connection id from the quic packet.
-        :param quic_packet_udp_payload:
-        :return:
-        """
-        hex_header = hexdump(quic_packet_udp_payload[Raw].load, dump=True)[4:48]
-        hex_header = hex_header.replace(" ", "")
-        print("hex header: ", hex_header)
-        # bin_cid = bin(int(hex_cid, base))
-        bin_header = "{0:b}".format(int(hex_header, HEX_BASE)).zfill(len(hex_header) * 4)
-        if self.is_long_header(bin_header):
-            print("long header")
-            # the DCID is in the 7th byte of the long header, and its length is written in the 6th byte.
-            client_allocated_cid_length = int(bin_header[5 * BYTE_LENGTH:6 * BYTE_LENGTH], BIN_BASE)
-            bin_cid = bin_header[6 * BYTE_LENGTH:6 * BYTE_LENGTH + client_allocated_cid_length * BYTE_LENGTH]
-        else:
-            print("short header")
-            # the DCID is in the 2nd byte of the short header, and its length is known by the LB,
-            # decided by the system designer with consensus with the backend server.
-            bin_cid = bin_header[1 * BYTE_LENGTH:1 * BYTE_LENGTH + self.CID_LENGTH * BYTE_LENGTH]
-        # bin_cid = (int(hex_cid, base)).zfill(len(hex_cid) * 4)
-        print("calculated hex cid: ", hex(int(bin_cid, BIN_BASE)))
-        return bin_cid
-
     def get_new_packet(self, packet, backend_server_index: int):
         """
         Build a new packet to send to the backend server.
@@ -142,23 +110,51 @@ class LoadBalancer:
         h = xxhash.xxh32(get_four_tuple(packet))
         return h.intdigest()
 
-    def get_routing_decision(self, packet) -> int:
+    def get_server_id_from_cid(self, cid: CID) -> int:
         """
-        Get the routing decision for the packet.
+        Get the server ID from the CID.
+        :param cid: the CID of the packet
+        :return: the server ID
+        """
+        return self.ip_address_to_server_index[cid.get_server_ip()]
+
+    def get_four_tuple_hash_routing_decision(self, packet) -> int:
+        """
+        Get the routing decision for the packet using the four tuble hash-based routing algorithm.
         :param packet: the received packet from the client
         :return: the index of the backend server to send the packet to
         """
         return self.four_tuple_hash(packet) % SERVERS_NUMBER
-        # return random.randint(0, 1)  # todo: the random should be generated only for long header packets, use 5-tuple hash instead of random
+        # return 1
+
+    def get_cid_routing_decision(self, packet) -> int:
+        """
+        Get the routing decision for the packet using the CID-based routing algorithm.
+        We use four (todo:change to two-tuple)
+        tuple routing for initial packets that don't use a server allocated
+        CID. For short packets that use a server allocated CID, we use the CID to decide the
+        backend server to send the packet to.
+        No special optimization is being done here.
+        :param packet: the received packet from the client
+        :return: the index of the backend server to send the packet to
+        """
+        routing_decision = 0
+
+        if is_long_header(packet):
+            routing_decision = self.get_four_tuple_hash_routing_decision(packet)
+        else:
+            packet_cid = CID(packet)
+            routing_decision = self.get_server_id_from_cid(packet_cid)
+
+        return routing_decision
 
     def handle_packet(self, packet):
         print("packet received")
         global counter
 
-        quic_packet = packet[UDP].payload
-        cid = self.get_dcid(quic_packet)
+        cid = CID(packet)
 
-        print("hex quic headers: ", cid)
+        print("hex quic headers: ", cid.get_cid())
 
         server_index = self.get_routing_decision(packet)
         print("routing decision: ", server_index)
@@ -205,6 +201,7 @@ class LoadBalancer:
 
 
 if __name__ == '__main__':
-    lb = LoadBalancer()
+    # lb = LoadBalancer("four_tuple_hash")
+    lb = LoadBalancer("routable_cid")
     lb.sniff()
     # lb.pyshark_sniff()

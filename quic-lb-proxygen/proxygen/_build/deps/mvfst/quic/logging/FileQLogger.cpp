@@ -333,7 +333,7 @@ void FileQLogger::addPacketDrop(size_t packetSize, std::string dropReason) {
 void FileQLogger::addDatagramReceived(uint64_t dataLen) {
   auto refTime = std::chrono::duration_cast<std::chrono::microseconds>(
       std::chrono::steady_clock::now().time_since_epoch());
-
+  //todo: add here a time event that a packet was received, and then add another time event when it was served.
   handleEvent(
       std::make_unique<quic::QLogDatagramReceivedEvent>(dataLen, refTime));
 }
