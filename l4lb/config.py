@@ -8,6 +8,18 @@ CID_LENGTH = 8  # in bytes, server-allocated CIDs
 SERVERS_PORT = 6666
 SERVERS_BASE_ADDRESS = "172.18"
 
+verbose = True
+
+
+def log(*args):
+    """
+    Print the given message if verbose is set to True.
+    :param msg: the message to print
+    :return: None
+    """
+    if verbose:
+        print(*args)
+
 
 def get_ip_from_two_nibbles(nibble_1, nibble_2):
     """

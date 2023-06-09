@@ -23,7 +23,7 @@ def get_quic_header(packet) -> str:
     quic_packet_udp_payload = get_quic_packet(packet)
     hex_header = hexdump(quic_packet_udp_payload[Raw].load, dump=True)[4:header_length]
     hex_header = hex_header.replace(" ", "")
-    print("hex header: ", hex_header)
+    log("hex header: ", hex_header)
     # bin_cid = bin(int(hex_cid, base))
     bin_header = "{0:b}".format(int(hex_header, HEX_BASE)).zfill(len(hex_header) * 4)
     return bin_header
@@ -52,17 +52,17 @@ class CID:
         bin_header = get_quic_header(packet)
 
         if is_long_header(packet):
-            print("long header")
+            log("long header")
             # the DCID is in the 7th byte of the long header, and its length is written in the 6th byte.
             client_allocated_cid_length = int(bin_header[5 * BYTE_LENGTH:6 * BYTE_LENGTH], BIN_BASE)
             bin_cid = bin_header[6 * BYTE_LENGTH:6 * BYTE_LENGTH + client_allocated_cid_length * BYTE_LENGTH]
         else:
-            print("short header")
+            log("short header")
             # the DCID is in the 2nd byte of the short header, and its length is known by the LB,
             # decided by the system designer with consensus with the backend server.
             bin_cid = bin_header[1 * BYTE_LENGTH:1 * BYTE_LENGTH + CID_LENGTH * BYTE_LENGTH]
         # bin_cid = (int(hex_cid, base)).zfill(len(hex_cid) * 4)
-        print("calculated hex cid: ", hex(int(bin_cid, BIN_BASE)))
+        log("calculated hex cid: ", hex(int(bin_cid, BIN_BASE)))
 
         self.cid = bin_cid
 
