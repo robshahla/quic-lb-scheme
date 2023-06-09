@@ -7,6 +7,7 @@ SERVERS_NUMBER = 4
 CID_LENGTH = 8  # in bytes, server-allocated CIDs
 SERVERS_PORT = 6666
 SERVERS_BASE_ADDRESS = "172.18"
+HEAVY_HITTERS_SIZE = 10  # this can be configurable, todo: maybe use a dynamic size and add functionality in spaceSaving
 
 verbose = True
 

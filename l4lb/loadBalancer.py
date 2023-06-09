@@ -12,6 +12,7 @@ from pyshark.packet.fields import LayerField, LayerFieldsContainer
 from scapy.layers.dot11 import RadioTap
 from scapy.utils import *
 from config import *
+from spaceSaving import *
 
 counter = 0
 
@@ -41,10 +42,19 @@ class LoadBalancer:
         self.servers = [(f"s{i}", generate_server_ip_address(i), SERVERS_PORT, generate_server_mac_address(i)) for i in range(SERVERS_NUMBER)]
         self.ip_address_to_server_index = {self.servers[i][1]: i for i in range(SERVERS_NUMBER)}
         self.LOAD_BALANCER_MAC = get_load_balancer_mac_address()
+
         self.routing_decision = {
             "four_tuple_hash": self.get_four_tuple_hash_routing_decision,
             "routable_cid": self.get_cid_routing_decision,
+            "heavy_hitter": self.get_heavy_hitter_routing_decision,
         }
+
+        if routing_policy not in self.routing_decision:
+            raise ValueError(f"routing policy {routing_policy} is not supported")
+
+        if routing_policy == "heavy_hitter":
+            # a heavy-hitters table per server
+            self.heavy_hitters = [SpaceSaving(HEAVY_HITTERS_SIZE) for _ in range(SERVERS_NUMBER)]
 
         log("load balancer started, using routing policy: ", routing_policy)
         log("servers info: ")
@@ -169,6 +179,22 @@ class LoadBalancer:
 
         return routing_decision
 
+    def get_heavy_hitter_routing_decision(self, packet) -> int:
+        """
+        Get the routing decision for the packet using the heavy hitter-based routing algorithm.
+        :param packet: the received packet from the client
+        :return: the index of the backend server to send the packet to
+        """
+        if is_long_header(packet):
+            routing_decision = self.get_two_tuple_hash_routing_decision(packet)
+            # todo: add inspecting the load on the servers and heavy-hitter logic
+        else:
+            packet_cid = CID(packet)
+            routing_decision = self.get_server_id_from_cid(packet_cid)
+            self.heavy_hitters[routing_decision].update_element(packet[IP].src)
+
+        return routing_decision
+
     def handle_packet(self, packet):
         log("packet received")
         global counter
@@ -201,6 +227,8 @@ class LoadBalancer:
         global counter
         print("counter value: ", counter)
         print("finished sniffing")
+        for i in range(len(self.heavy_hitters)):
+            print(f"server {i} heavy hitters: ", self.heavy_hitters[i].get_elements())
 
     def pyshark_handle_packet(self, packet):
         print(type(packet))
@@ -223,6 +251,7 @@ class LoadBalancer:
 
 if __name__ == '__main__':
     # lb = LoadBalancer("four_tuple_hash")
-    lb = LoadBalancer("routable_cid")
+    # lb = LoadBalancer("routable_cid")
+    lb = LoadBalancer("heavy_hitter")
     lb.sniff()
     # lb.pyshark_sniff()
