@@ -1,6 +1,6 @@
 #!/bin/bash
 
-docker build -t my-load-balancer .
+docker build -t my-load-balancer-new .
 
 docker rm -f my-running-load-balancer
 

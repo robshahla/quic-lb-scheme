@@ -40,6 +40,25 @@ def is_long_header(packet) -> bool:
     bin_header = get_quic_header(packet)
     return bin_header[first_bit] == "1"
 
+def get_packet_type(packet) -> str:
+    """
+    Get the packet type from the quic packet header in case the packet is a long header.
+    The assumption is that the packet is a long header packet.
+    """
+    # the packet type is in indices 2-3 of the header
+    types = {
+        "00": "Initial",
+        "01": "0-RTT",
+        "10": "Handshake",
+        "11": "Retry"
+    }
+
+    packet_type_start = 2
+    packet_type_end = 4
+    bin_header = get_quic_header(packet)
+    packet_type = bin_header[packet_type_start:packet_type_end]
+    return types[packet_type]
+
 
 class CID:
     def __init__(self, packet):
@@ -52,7 +71,7 @@ class CID:
         bin_header = get_quic_header(packet)
 
         if is_long_header(packet):
-            log("long header")
+            log(f"long header - {get_packet_type(packet)}")
             # the DCID is in the 7th byte of the long header, and its length is written in the 6th byte.
             client_allocated_cid_length = int(bin_header[5 * BYTE_LENGTH:6 * BYTE_LENGTH], BIN_BASE)
             bin_cid = bin_header[6 * BYTE_LENGTH:6 * BYTE_LENGTH + client_allocated_cid_length * BYTE_LENGTH]

@@ -13,7 +13,7 @@ services:
   my-running-load-balancer:
     hostname: my-running-load-balancer
     container_name: my-running-load-balancer
-    image: my-load-balancer
+    image: my-load-balancer-new
     cap_add:
       - NET_ADMIN
       - NET_RAW
