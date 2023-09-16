@@ -1,0 +1,47 @@
+# Load Balancing Proxygen
+
+To run the containers, run the following command:
+```bash
+docker-compose up -d
+```
+
+Make sure that the docker images `my-load-balancer` and `my-proxygen` are built before running the containers.
+<!-- TODO: add explanation about the builkd of the docker images. -->
+
+## Deploy
+To test the load balancing, first deploy the load balancer:
+```bash
+docker exec -it my-load-balancer /bin/bash
+```
+
+Then inside the container (in the current directory), run the following command:
+```bash
+python3 loadBalancer.py
+```
+
+Then, connect to the client container:
+```bash
+docker exec -it my-load-balancer-new /bin/bash
+```
+
+Then, inside the container, run the following command:
+```bash
+./proxygen/proxygen/_build/proxygen/httpserver/hq --mode=client --host=172.18.1.2 --port=8888 --path=/10 --qlogger_path=./proxygen/0-rtt-qlogs/ --sequential=true --protocol=h3 --cert=/etc/ssl/certs/server.crt --key=/etc/ssl/private/server.key --early_data=true --psk_file=./psk.txt
+```
+
+This command will send a request to the load balancer, which will forward the request to the proxygen server. The proxygen server will then send the response back to the client.
+The response to the client will be routed using a NAT so that the client won't have the direct IP address of the proxygen server.
+The command uses HTTP/3 to send a request to the server to fetch 10 random bytes (the path is `/10`). The command also uses 0-RTT to send the request, using the psk file `psk.txt`, 
+and the certificate and key files `server.crt` and `server.key` respectively. The qlog file will be saved in the directory `0-rtt-qlogs`.
+If you don't want to use 0-RTT, you can instead use the following command:
+```bash
+./proxygen/proxygen/_build/proxygen/httpserver/hq --mode=client --host=172.18.1.2 --port=8888 --path=/10 --qlogger_path=./proxygen/1-rtt-qlogs/ --sequential=true --protocol=h3 --cert=/etc/ssl/certs/server.crt --key=/etc/ssl/private/server.key
+```
+
+## 0-RTT VS 1-RTT
+To test the difference between 0-RTT and 1-RTT in terms of latency, the experiment will be done by deploying the 
+client and server in the same docker container (`my-proxygen-server-0`) so that the network round-trip latency will be
+as close to 0 as possible.
+The evaluation is of the time it takes for the server to generate a new key and send it to the client, so that the client
+can then send its request using 1-RTT packet, vs the time it takes for the client to send its request using 0-RTT packet,
+which is encrypted using a key from the previous connection (saved in the `psk.txt` file).
