@@ -73,17 +73,7 @@ char* getIpAddress() {
             continue;
         }
         if (ifa->ifa_addr->sa_family == AF_INET) { // check it is IP4
-            // is a valid IP4 Address
-//            tmpAddrPtr=&((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
-//            char addressBuffer[INET_ADDRSTRLEN];
-            //inet_ntoa(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
-            //std::cout << inet_ntoa(((struct sockaddr_in *)ifa->ifa_addr)->sin_addr) << std::endl;
-            //std::cout << inet_addr(inet_ntoa(((struct sockaddr_in *)ifa->ifa_addr)->sin_addr)) << std::endl;
-            //printf("%s IP Address %s\n", ifa->ifa_name, addressBuffer);
-            //const char* ip = "172.18.2.3";
             return inet_ntoa(((struct sockaddr_in *)ifa->ifa_addr)->sin_addr);
-//            std::cout << f << std::endl;
-            //std::cout << inet_addr(ip.substr(0,'.')) << "----" << inet_addr("172.18.2.3") << std::endl;
         }
     }
     return nullptr;
