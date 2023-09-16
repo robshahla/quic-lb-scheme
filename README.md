@@ -79,3 +79,8 @@ The latency is measured as the time between the send of the first Initial packet
 (short header packet) from the server.
 
 We deploy two sets of experiments; one where all the requests are made sequentially, and one where all the requests are made in parallel.
+
+To analyze the results, run the following command:
+```bash
+python3 0-rtt-exp.py
+```
