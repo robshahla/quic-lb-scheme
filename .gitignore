@@ -142,3 +142,4 @@ quic-lb-proxygen/proxygen/_build/install_manifest.txt
 quic-lb-proxygen/proxygen/_build/lib/
 quic-lb-proxygen/proxygen/_build/proxygen-config.cmake
 quic-lb-proxygen/proxygen/_build/proxygen/
+quic-lb-proxygen/proxygen/_build/deps/mvfst/**

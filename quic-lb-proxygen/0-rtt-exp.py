@@ -2,8 +2,9 @@ import json
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
-def plot_cdf(zerortt_time_difference, onertt_time_difference):
+def plot_cdf(zerortt_time_difference, onertt_time_difference, output_file='0-rtt-cdf.png'):
     """
     Plot the CDF of the time differences of 0-RTT and 1-RTT
     """
@@ -24,7 +25,7 @@ def plot_cdf(zerortt_time_difference, onertt_time_difference):
     plt.plot(onertt_time_difference, onertt_x, label='1-RTT')
 
     # set the title and labels
-    plt.title('CDF of time difference between first packet sent and first packet received')
+    # plt.title('CDF of time difference between first packet sent and first packet received')
     plt.xlabel('Time difference (ms)')
     plt.ylabel('CDF')
 
@@ -32,7 +33,7 @@ def plot_cdf(zerortt_time_difference, onertt_time_difference):
     plt.legend()
 
     # save the plot
-    # plt.savefig('0-rtt-cdf.png')
+    plt.savefig(output_file)
 
     # show the plot
     plt.show()
@@ -54,7 +55,7 @@ def get_statistics(qlogs_folder):
     # store the time differences in a list
     time_differences = []
 
-    for file in files:
+    for i, file in enumerate(files):
         # print("Reading file: " + file)
         # read the file as a json
         with open(qlogs_folder + '/' + file) as f:
@@ -80,6 +81,8 @@ def get_statistics(qlogs_folder):
         assert difference > 0
         # store the time difference
         time_differences.append(difference)
+        if i % 100000 == 0:
+            print("Finished reading " + str(i) + " files")
 
     # get the mean and standard deviation of the time differences
     mean = np.mean(time_differences)
@@ -91,16 +94,49 @@ def get_statistics(qlogs_folder):
     return time_differences
 
 
+def get_values_from_file(filename):
+    df = pd.read_csv(filename)
+    zerortt_time_difference = df['0_rtt'].tolist()
+    onertt_time_difference = df['1_rtt'].tolist()
+    return zerortt_time_difference, onertt_time_difference
+
+
+def get_values_from_qlogs(qlogs_folder):
+    configurations = ['0_rtt', '1_rtt']
+
+    statistics = {c: None for c in configurations}
+    for configuration in configurations:
+        qlogs_folder = './quic-lb-proxygen/parallel-P5-C' + configuration
+        print(configuration)
+        stats = get_statistics(qlogs_folder)
+        statistics[configuration] = stats
+
+
+    # qlogs_folder = './quic-lb-proxygen/parallel-P5-C0_rtt'
+    # print("0-RTT")
+    # zerortt_time_difference = get_statistics(qlogs_folder)
+
+    # qlogs_folder = './quic-lb-proxygen/parallel-P5-C1_rtt'
+    # print("1-RTT")
+    # onertt_time_difference = get_statistics(qlogs_folder)
+
+    # save the time differences to a file
+    df = pd.DataFrame(statistics)
+    # df = pd.DataFrame({'0-RTT': zerortt_time_difference, '1-RTT': onertt_time_difference})
+    df.to_csv('parallel-P5-time-differences.csv', index=False)
+    return df["0_rtt"], df["1_rtt"]
+
+
 def main():
-    qlogs_folder = './quic-lb-proxygen/0-rtt-qlogs'
-    print("0-RTT")
-    zerortt_time_difference = get_statistics(qlogs_folder)
+    # get the time differences from the qlogs
+    qlogs_folder = './quic-lb-proxygen/parallel-P5-C'
+    # zerortt_time_difference, onertt_time_difference = get_values_from_qlogs(qlogs_folder)
 
-    qlogs_folder = './quic-lb-proxygen/1-rtt-qlogs'
-    print("1-RTT")
-    onertt_time_difference = get_statistics(qlogs_folder)
+    zerortt_time_difference, onertt_time_difference = get_values_from_file('sequential-time-differences.csv')
 
-    plot_cdf(zerortt_time_difference, onertt_time_difference)
+    # plot_cdf(zerortt_time_difference, onertt_time_difference, output_file='sequential-cdf.png')
+    num_iterations = 1000000
+    plot_cdf(zerortt_time_difference[-num_iterations:], onertt_time_difference[-num_iterations:], output_file='1M-sequential-cdf.png')
 
 
 if __name__ == '__main__':

@@ -66,10 +66,18 @@ docker exec -it my-proxygen-server-0 /bin/bash
 
 Then, inside the container, run the following command:
 ```bash
-./run-0-rtt-exp.sh
+./run-0-rtt-exp.sh <config> <num_iterations> <qlog_path>
 ```
-The command will a number of iterations in each configuration (0-RTT and non-0-RTT), and will save the relevant `qlogs` in the 
-`0-rtt-qlogs` and `1-rtt-qlogs` directories respectively.
+Where `<config>` is either `0_rtt` or `1_rtt`, and `<num_iterations>` is the number of iterations to run in each configuration.
+The `<qlog_path>` is the path to the directory where the qlogs will be saved.
+The command will run a number of iterations in each configuration (0-RTT and non-0-RTT).
+
+To run the experiment with mutiple processes (in parallel), run the following command inside the container:
+```bash
+python3 run-0-rtt-exp.py
+```
+The number of iterations and processes to be run are written inside the file.
+
 Once that's done, you can run the following command to get the average time and other statistics of each configuration:
 ```bash
 python3 0-rtt-exp.py
@@ -84,3 +92,6 @@ To analyze the results, run the following command:
 ```bash
 python3 0-rtt-exp.py
 ```
+The results will be save to a csv file in a directory specified in the `0-rtt-exp.py` file,
+and a plot will be saved in the same directory.
+
