@@ -1,28 +1,35 @@
 import json
 import os
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-def plot_cdf(zerortt_time_difference, onertt_time_difference, output_file='0-rtt-cdf.png'):
+def plot_cdf(differences, labels, output_file='0-rtt-cdf.png'):
     """
     Plot the CDF of the time differences of 0-RTT and 1-RTT
     """
     # sort the time differences
-    zerortt_time_difference.sort()
-    onertt_time_difference.sort()
+    [difference.sort() for difference in differences]
+    # zerortt_time_difference.sort()
+    # onertt_time_difference.sort()
 
     # get the number of time differences
-    num_zerortt = len(zerortt_time_difference)
-    num_onertt = len(onertt_time_difference)
+    lengths = [len(difference) for difference in differences]
+    # num_zerortt = len(zerortt_time_difference)
+    # num_onertt = len(onertt_time_difference)
 
     # get the x-axis values
-    zerortt_x = np.linspace(0, 1, num_zerortt)
-    onertt_x = np.linspace(0, 1, num_onertt)
+    x_axis_values = [np.linspace(0, 1, length) for length in lengths]
+    # zerortt_x = np.linspace(0, 1, num_zerortt)
+    # onertt_x = np.linspace(0, 1, num_onertt)
 
     # plot the CDFs
-    plt.plot(zerortt_time_difference, zerortt_x, label='0-RTT')
-    plt.plot(onertt_time_difference, onertt_x, label='1-RTT')
+    for i, difference in enumerate(differences):
+        plt.plot(difference, x_axis_values[i], linestyle='-', label=labels[i])
+
+    # plt.plot(zerortt_time_difference, zerortt_x, linestyle='-', label='0-RTT')
+    # plt.plot(onertt_time_difference, onertt_x, linestyle='-.', label='1-RTT')
 
     # set the title and labels
     # plt.title('CDF of time difference between first packet sent and first packet received')
@@ -101,15 +108,16 @@ def get_values_from_file(filename):
     return zerortt_time_difference, onertt_time_difference
 
 
-def get_values_from_qlogs(qlogs_folder):
+def get_values_from_qlogs(qlogs_folder, num_iterations):
     configurations = ['0_rtt', '1_rtt']
-
+    min_length = 10000000
     statistics = {c: None for c in configurations}
     for configuration in configurations:
-        qlogs_folder = './quic-lb-proxygen/parallel-P5-C' + configuration
+        folder = qlogs_folder + configuration
         print(configuration)
-        stats = get_statistics(qlogs_folder)
-        statistics[configuration] = stats
+        stats = get_statistics(folder)
+        statistics[configuration] = stats[-num_iterations:]
+        min_length = min(min_length, len(statistics[configuration]))
 
 
     # qlogs_folder = './quic-lb-proxygen/parallel-P5-C0_rtt'
@@ -121,23 +129,91 @@ def get_values_from_qlogs(qlogs_folder):
     # onertt_time_difference = get_statistics(qlogs_folder)
 
     # save the time differences to a file
+    statistics = {c: statistics[c][:min_length] for c in configurations}
     df = pd.DataFrame(statistics)
     # df = pd.DataFrame({'0-RTT': zerortt_time_difference, '1-RTT': onertt_time_difference})
-    df.to_csv('parallel-P5-time-differences.csv', index=False)
-    return df["0_rtt"], df["1_rtt"]
+    df.to_csv(f'{qlogs_folder}.csv', index=False)
+    return statistics["0_rtt"], statistics["1_rtt"]
+
+def plot_all_mean(differences, labels, output_file):
+    """
+    for each difference in differences, calculate the mean. In the end,
+    plot the means as a function of the number of processes, one line for 0-RTT
+    and one line for 1-RTT.
+    """
+    means = [np.mean(difference) for difference in differences]
+    
+    # for each mean value, check if the corresponding label is 0-RTT or 1-RTT and plot accordingly
+    # the x-axis values should be the number of processes
+    x_axis_values = [int(label[7:]) for label in labels]
+    print(x_axis_values)
+
+    y_axis_0_rtt = [means[i] for i, label in enumerate(labels) if label.startswith('0-RTT')]
+    x_axis_0_rtt_values = [x_axis_values[i] for i, label in enumerate(labels) if label.startswith('0-RTT')]
+    y_axis_1_rtt = [means[i] for i, label in enumerate(labels) if label.startswith('1-RTT')]
+    x_axis_1_rtt_values = [x_axis_values[i] for i, label in enumerate(labels) if label.startswith('1-RTT')]
+
+    plt.plot(x_axis_0_rtt_values, y_axis_0_rtt, 'b-', label='0-RTT', marker='x')
+    plt.plot(x_axis_1_rtt_values, y_axis_1_rtt, 'r-.', label='1-RTT', marker='o')
+    # for i, label in enumerate(labels):
+    #     if label.startswith('0-RTT'):
+    #         plt.plot(x_axis_values[i], means[i], 'b-')
+    #     else:
+    #         plt.plot(x_axis_values[i], means[i], 'r-')
+    
+
+
+    # set the title and labels
+    plt.legend()
+    plt.xlabel('Number of processes')
+    plt.ylabel('Mean time difference (ms)')
+
+    # save the plot
+    plt.savefig(output_file)
+
+
+
+
+def combine_all_info():
+    """
+    draw cdf of multiple configurations on the same plot
+    """
+    processes = [1, 5, 15, 20, 30, 60, 100, 200]
+    files = [f'parallel-P{p}-C.csv' for p in processes]
+    differences, labels = [], []
+    for file in files:
+        print("Reading file: " + file)
+        zerortt_time_difference, onertt_time_difference = get_values_from_file(file)
+        differences.append(zerortt_time_difference)
+        labels.append(f'0-RTT-P{file[10:-6]}')
+        differences.append(onertt_time_difference)
+        labels.append(f'1-RTT-P{file[10:-6]}')
+
+    return differences, labels
 
 
 def main():
-    # get the time differences from the qlogs
-    qlogs_folder = './quic-lb-proxygen/parallel-P5-C'
-    # zerortt_time_difference, onertt_time_difference = get_values_from_qlogs(qlogs_folder)
+    differences, labels = combine_all_info()
 
-    zerortt_time_difference, onertt_time_difference = get_values_from_file('sequential-time-differences.csv')
+    # plot_cdf(differences, labels, output_file=f'all-cdf.png')
+    plot_all_mean(differences, labels, output_file='all-mean.png')
+
+    return
+    # get the time differences from the qlogs
+    exp = sys.argv[1]
+    qlogs_folder = f'./{exp}'
+    num_iterations = 1000000
+    zerortt_time_difference, onertt_time_difference = get_values_from_qlogs(qlogs_folder, num_iterations)
+
+    # zerortt_time_difference, onertt_time_difference = get_values_from_file('sequential-time-differences.csv')
+    # zerortt_time_difference, onertt_time_difference = get_values_from_file(qlogs_folder + '.csv')
 
     # plot_cdf(zerortt_time_difference, onertt_time_difference, output_file='sequential-cdf.png')
-    num_iterations = 1000000
-    plot_cdf(zerortt_time_difference[-num_iterations:], onertt_time_difference[-num_iterations:], output_file='1M-sequential-cdf.png')
+    # plot_cdf(zerortt_time_difference[-num_iterations:], onertt_time_difference[-num_iterations:], output_file='1M-sequential-cdf.png')
+    plot_cdf([zerortt_time_difference[-num_iterations:], onertt_time_difference[-num_iterations:]], ["0-RTT", "1-RTT"], output_file=f'1M-parallel-{qlogs_folder[2:]}-cdf.png')
 
+
+ 
 
 if __name__ == '__main__':
     main()

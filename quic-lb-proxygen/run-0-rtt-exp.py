@@ -1,8 +1,10 @@
 import os
+import sys
 import subprocess
 
 
 command_to_run = "./run-0-rtt-exp.sh"
+version = "v2"
 
 def run_experiment(iterations, configuration, processes):
     """
@@ -14,22 +16,30 @@ def run_experiment(iterations, configuration, processes):
 
     # create the command to run
     iterations_per_process = iterations // processes
-    qlog_dir_name = f"parallel-P{processes}-C{configuration}"
+    qlog_dir_name = f"{version}-parallel-P{processes}-C{configuration}"
     os.makedirs(qlog_dir_name, exist_ok=True)
+    process_ids = []
     
-    command = f"{command_to_run} {configuration} {iterations_per_process} {qlog_dir_name}"
     for process in range(processes):
         # run the command
+        command = f"{command_to_run} {configuration} {iterations_per_process} {qlog_dir_name} {process}"
         print("Running process " + str(process))
-        subprocess.Popen(command, shell=True)
-
+        process_ids.append(subprocess.Popen(command, shell=True))
+    
+    return process_ids
 
 
 def main():
     # number of processes
-    iterations = 1000005
-    processes = 5
-    run_experiment(iterations, "1_rtt", processes)
+    iterations = 1205000
+    # processes = [20, 30]
+    configuration = sys.argv[1]  # must be `0_rtt` or `1_rtt`
+    processes = int(sys.argv[2])
+
+    for configuration in ["0_rtt", "1_rtt"]:
+        process_ids = run_experiment(iterations, configuration, processes)
+        [p.wait() for p in process_ids]
+
 
 if __name__ == '__main__':
     main()
