@@ -95,3 +95,9 @@ python3 0-rtt-exp.py
 The results will be save to a csv file in a directory specified in the `0-rtt-exp.py` file,
 and a plot will be saved in the same directory.
 
+To analyze the results across both 0-RTT and 1-RTT, run the following command:
+```bash
+python3 0-rtt-exp.py v2-parallel-P1-C
+```
+Where `v2-parallel-P1-C0_rtt`, `v2-parallel-P1-C1_rtt` are the names of the directory where the results are saved.
+

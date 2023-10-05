@@ -3,7 +3,58 @@ import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.pyplot import figure
 import pandas as pd
+
+def plot_percentiles_ratio(zerortt_time_difference, onertt_time_difference, output_file='0-rtt-percentiles-ratio.png'):
+    """
+    Plot the ratio of the percentiles of 0-RTT and 1-RTT.
+    The x-axis should be the percentile, and the y-axis should be the ratio.
+    """
+    # get the percentiles of the time differences
+    zerortt_percentiles = np.percentile(zerortt_time_difference, np.linspace(0, 99, 100))
+    onertt_percentiles = np.percentile(onertt_time_difference, np.linspace(0, 99, 100))
+
+    # get the ratio
+    ratio = onertt_percentiles / zerortt_percentiles
+    plt.subplots(figsize=(6, 2))
+    # plot the ratio
+    plt.plot(np.linspace(0, 99, 100), ratio)
+
+    # set the title and labels
+    plt.title('Ratio of percentiles')
+    plt.xlabel('Percentile')
+    plt.ylabel('1-RTT / 0-RTT')
+    plt.ylim(0, 3)
+    plt.grid()
+
+    # save the plot
+    plt.savefig(output_file)
+
+    # show the plot
+    plt.show()
+    plt.cla()
+
+
+def plot_boxplot(differences, labels, output_file='0-rtt-boxplot.png'):
+    """
+    Plot the boxplot of the time differences of 0-RTT and 1-RTT
+    """
+    # plot the boxplot
+    plt.boxplot(differences, labels=labels)
+
+    # set the title and labels
+    plt.title('Boxplot of time difference between first packet sent and first packet received')
+    plt.xlabel('Packet type')
+    plt.ylabel('Time difference (ms)')
+    plt.ylim(0, 10)
+    # save the plot
+    plt.savefig(output_file)
+
+    # show the plot
+    plt.show()
+    plt.cla()
+
 
 def plot_cdf(differences, labels, output_file='0-rtt-cdf.png'):
     """
@@ -25,8 +76,9 @@ def plot_cdf(differences, labels, output_file='0-rtt-cdf.png'):
     # onertt_x = np.linspace(0, 1, num_onertt)
 
     # plot the CDFs
+    lines = ["-", "-.", "--", ":"]
     for i, difference in enumerate(differences):
-        plt.plot(difference, x_axis_values[i], linestyle='-', label=labels[i])
+        plt.plot(difference, x_axis_values[i], linestyle=lines[i % len(lines)], label=labels[i])
 
     # plt.plot(zerortt_time_difference, zerortt_x, linestyle='-', label='0-RTT')
     # plt.plot(onertt_time_difference, onertt_x, linestyle='-.', label='1-RTT')
@@ -35,6 +87,7 @@ def plot_cdf(differences, labels, output_file='0-rtt-cdf.png'):
     # plt.title('CDF of time difference between first packet sent and first packet received')
     plt.xlabel('Time difference (ms)')
     plt.ylabel('CDF')
+    plt.xlim(0, 10)
 
     # set the legend
     plt.legend()
@@ -44,6 +97,7 @@ def plot_cdf(differences, labels, output_file='0-rtt-cdf.png'):
 
     # show the plot
     plt.show()
+    plt.cla()
 
 
 def get_statistics(qlogs_folder):
@@ -135,51 +189,55 @@ def get_values_from_qlogs(qlogs_folder, num_iterations):
     df.to_csv(f'{qlogs_folder}.csv', index=False)
     return statistics["0_rtt"], statistics["1_rtt"]
 
-def plot_all_mean(differences, labels, output_file):
+def plot_all_mean(differences, labels, output_file, metric='mean') :
     """
     for each difference in differences, calculate the mean. In the end,
-    plot the means as a function of the number of processes, one line for 0-RTT
-    and one line for 1-RTT.
+    plot the values as a function of the number of processes, one line for 0-RTT
+    and one line for 1-RTT. The values that are plotted are the metric
     """
-    means = [np.mean(difference) for difference in differences]
+    values = []
+    if metric == 'mean':
+        values = [np.mean(difference) for difference in differences]
+    elif metric == 'median':
+        values = [np.median(difference) for difference in differences]
+    elif metric == 'p99':
+        values = [np.percentile(difference, 99) for difference in differences]
     
     # for each mean value, check if the corresponding label is 0-RTT or 1-RTT and plot accordingly
     # the x-axis values should be the number of processes
-    x_axis_values = [int(label[7:]) for label in labels]
+    x_axis_values = [int(label[10:]) for label in labels]
     print(x_axis_values)
 
-    y_axis_0_rtt = [means[i] for i, label in enumerate(labels) if label.startswith('0-RTT')]
+    y_axis_0_rtt = [values[i] for i, label in enumerate(labels) if label.startswith('0-RTT')]
     x_axis_0_rtt_values = [x_axis_values[i] for i, label in enumerate(labels) if label.startswith('0-RTT')]
-    y_axis_1_rtt = [means[i] for i, label in enumerate(labels) if label.startswith('1-RTT')]
+    y_axis_1_rtt = [values[i] for i, label in enumerate(labels) if label.startswith('1-RTT')]
     x_axis_1_rtt_values = [x_axis_values[i] for i, label in enumerate(labels) if label.startswith('1-RTT')]
 
     plt.plot(x_axis_0_rtt_values, y_axis_0_rtt, 'b-', label='0-RTT', marker='x')
     plt.plot(x_axis_1_rtt_values, y_axis_1_rtt, 'r-.', label='1-RTT', marker='o')
     # for i, label in enumerate(labels):
     #     if label.startswith('0-RTT'):
-    #         plt.plot(x_axis_values[i], means[i], 'b-')
+    #         plt.plot(x_axis_values[i], values[i], 'b-')
     #     else:
-    #         plt.plot(x_axis_values[i], means[i], 'r-')
+    #         plt.plot(x_axis_values[i], values[i], 'r-')
     
 
 
     # set the title and labels
     plt.legend()
     plt.xlabel('Number of processes')
-    plt.ylabel('Mean time difference (ms)')
+    plt.ylabel(f'{metric} time difference (ms)')
 
     # save the plot
     plt.savefig(output_file)
 
+    plt.cla()
 
 
-
-def combine_all_info():
+def combine_all_info(files):
     """
     draw cdf of multiple configurations on the same plot
     """
-    processes = [1, 5, 15, 20, 30, 60, 100, 200]
-    files = [f'parallel-P{p}-C.csv' for p in processes]
     differences, labels = [], []
     for file in files:
         print("Reading file: " + file)
@@ -191,27 +249,46 @@ def combine_all_info():
 
     return differences, labels
 
+def plot_combined():
+    processes = [1, 5, 10, 15, 20, 30, 60, 100, 200]
+    # files = [f'`parallel-P{p}-C.csv' for p in processes]
+    files = [f'v2-parallel-P{p}-C.csv' for p in processes]
+
+    differences, labels = combine_all_info(files)
+    
+    # turn differences into milliseconds from microseconds
+    differences = [[d / 1000 for d in difference] for difference in differences]
+
+    print("Plotting CDF")
+    # plot_cdf(differences, labels, output_file=f'v2-all-cdf.png')
+    print("Plotting all-mean")
+    plot_all_mean(differences, labels, output_file='v2-all-mean.png')
+    print("Plotting all-median")
+    plot_all_mean(differences, labels, output_file='v2-all-median.png', metric='median')
+    print("Plotting all-p99")
+    plot_all_mean(differences, labels, output_file='v2-all-p99.png', metric='p99')
+
 
 def main():
-    differences, labels = combine_all_info()
-
-    # plot_cdf(differences, labels, output_file=f'all-cdf.png')
-    plot_all_mean(differences, labels, output_file='all-mean.png')
-
-    return
+    # plot_combined()
+    # return
     # get the time differences from the qlogs
     exp = sys.argv[1]
     qlogs_folder = f'./{exp}'
     num_iterations = 1000000
-    zerortt_time_difference, onertt_time_difference = get_values_from_qlogs(qlogs_folder, num_iterations)
+    # zerortt_time_difference, onertt_time_difference = get_values_from_qlogs(qlogs_folder, num_iterations)
 
     # zerortt_time_difference, onertt_time_difference = get_values_from_file('sequential-time-differences.csv')
-    # zerortt_time_difference, onertt_time_difference = get_values_from_file(qlogs_folder + '.csv')
+    zerortt_time_difference, onertt_time_difference = get_values_from_file(qlogs_folder + '.csv')
+    # turn differences into milliseconds from microseconds
+    zerortt_time_difference = [d / 1000 for d in zerortt_time_difference]
+    onertt_time_difference = [d / 1000 for d in onertt_time_difference]
 
     # plot_cdf(zerortt_time_difference, onertt_time_difference, output_file='sequential-cdf.png')
     # plot_cdf(zerortt_time_difference[-num_iterations:], onertt_time_difference[-num_iterations:], output_file='1M-sequential-cdf.png')
     plot_cdf([zerortt_time_difference[-num_iterations:], onertt_time_difference[-num_iterations:]], ["0-RTT", "1-RTT"], output_file=f'1M-parallel-{qlogs_folder[2:]}-cdf.png')
-
+    plot_boxplot([zerortt_time_difference[-num_iterations:], onertt_time_difference[-num_iterations:]], ["0-RTT", "1-RTT"], output_file=f'1M-parallel-{qlogs_folder[2:]}-boxplot.png')
+    plot_percentiles_ratio(zerortt_time_difference[-num_iterations:], onertt_time_difference[-num_iterations:], output_file=f'1M-parallel-{qlogs_folder[2:]}-percentiles-ratio.png')
 
  
 
