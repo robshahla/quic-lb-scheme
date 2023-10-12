@@ -48,18 +48,25 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
-      - sys_ptrace
+      - SYS_PTRACE
+      - SYS_ADMIN
     networks:
       scheme-network:
         ipv4_address: 172.18.0.2
+    security_opt:
+      - seccomp:unconfined
     volumes:
       - ./quic-lb-proxygen:/usr/src/proxygen
     command: >-
       sh -c "apt-get install -y iproute2 iptables conntrack tcpdump &&
+      apt-get update &&
+      apt update &&
+      apt install linux-tools-generic -y &&
       cp ./proxygen/server.crt /etc/ssl/certs &&
       cp ./proxygen/server.key /etc/ssl/private &&
       tail -f /dev/null"
     cpus: 8.0
+    cpuset: "0-7"
     mem_limit: 32G
     mem_reservation: 32G
 
@@ -99,7 +106,8 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
-      - sys_ptrace
+      - SYS_PTRACE
+      - SYS_ADMIN
     networks:
       scheme-network:
         ipv4_address: 172.18.2.2
@@ -110,11 +118,15 @@ services:
       - my-running-nat
     command: >-
       sh -c "apt-get install -y iproute2 iptables tcpdump conntrack &&
+      apt-get update &&
+      apt update &&
+      apt install linux-tools-generic -y &&
       touch s0psk.txt &&
       cp ./proxygen/server.crt /etc/ssl/certs &&
       cp ./proxygen/server.key /etc/ssl/private &&
-      ./proxygen/proxygen/_build/proxygen/httpserver/hq --mode=server --host=172.18.2.2 --port=6666 --early_data=true --psk_file=./psk.txt --protocol=h3 --cert=/etc/ssl/certs/server.crt --key=/etc/ssl/private/server.key"
+      tail -f /dev/null"
     cpus: 4.0
+    cpuset: "8-11"
     mem_limit: 32G
     mem_reservation: 32G
     
