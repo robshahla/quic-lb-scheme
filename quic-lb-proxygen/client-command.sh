@@ -1,0 +1,2 @@
+#!/bin/bash
+python3 run-0-rtt-exp.py $1 $2 $3$1 & perf stat -o perf-data/perf-$3$1.data -x, -v -e instructions,cycles,cache-misses,cache-references,ref-cycles,mem-loads,mem-stores,page-faults,cpu-clock -p ${!} ./wait-for-process.sh ${!}

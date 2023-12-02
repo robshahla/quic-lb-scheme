@@ -31,7 +31,8 @@ def run_experiment(iterations, configuration, processes, qlog_dir_name):
 
 def main():
     # number of processes
-    iterations = 1205000
+    # iterations = 1205000
+    iterations = 110500
     # iterations = 10
     # processes = [20, 30]
     configuration = sys.argv[1]  # must be `0_rtt` or `1_rtt`

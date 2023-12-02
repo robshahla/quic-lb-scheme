@@ -1,7 +1,11 @@
 #!/bin/bash
+# TODO: add a new name (files and directories for the experiment with client authentication. the relevant command for the server
+# to authenticate the client is in the server-command.sh file.)
 docker-compose up -d my-running-client my-proxygen-server-0
-for iteration in {0..10}
+# for iteration in {1..11}
+for iteration in {24..34}
 do
+    # for processes in 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200 300 400
     for processes in 1 5 10 15 20 30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200
     do
         base_name=v2-parallel-I${iteration}-P${processes}-C
@@ -9,14 +13,21 @@ do
         for mode in 0_rtt 1_rtt
         do
             docker-compose restart my-running-client my-proxygen-server-0
-            sleep 5
+            sleep 30
             echo "running the server"
             docker exec -d -t -w /usr/src/ my-proxygen-server-0 bash -c "pkill -f hq"
-            docker exec -d -t -w /usr/src/ my-proxygen-server-0 bash -c "perf stat -o proxygen/perf-data/perf-${base_name}${mode}-server.data -x, -v -e instructions,cycles,cache-misses,cache-references,ref-cycles,mem-loads,mem-stores,page-faults,cpu-clock ./proxygen/proxygen/_build/proxygen/httpserver/hq --mode=server --host=172.18.2.2 --port=6666 --early_data=true --psk_file=./psk.txt --protocol=h3 --cert=/etc/ssl/certs/server.crt --key=/etc/ssl/private/server.key" > /dev/null
-            sleep 5
+            docker exec -d -t -w /usr/src/ my-proxygen-server-0 bash -c "./proxygen/server-command.sh ${base_name} ${mode}" > /dev/null
+            # docker exec -d -t -w /usr/src/ my-proxygen-server-0 bash -c "perf stat -o proxygen/perf-data/perf-${base_name}${mode}-server.data -x, -v -e instructions,cycles,cache-misses,cache-references,ref-cycles,mem-loads,mem-stores,page-faults,cpu-clock -a -C 8-11 ./proxygen/proxygen/_build/proxygen/httpserver/hq --mode=server --host=172.18.2.2 --port=6666 --early_data=true --psk_file=./psk.txt --protocol=h3 --cert=/etc/ssl/certs/server.crt --key=/etc/ssl/private/server.key" > /dev/null
+            # docker exec -d -t -w /usr/src/ my-proxygen-server-0 bash -c "./proxygen/proxygen/_build/proxygen/httpserver/hq --mode=server --host=172.18.2.2 --port=6666 --early_data=true --psk_file=./psk.txt --protocol=h3 --cert=/etc/ssl/certs/server.crt --key=/etc/ssl/private/server.key & perf stat -o proxygen/perf-data/perf-${base_name}${mode}-server.data -x, -v -e instructions,cycles,cache-misses,cache-references,ref-cycles,mem-loads,mem-stores,page-faults,cpu-clock -p ${!} ./proxygen/wait-for-process.sh ${!}" > /dev/null
+            # docker exec -t -w /usr/src/ my-proxygen-server-0 bash -c "./proxygen/proxygen/_build/proxygen/httpserver/hq --mode=server --host=172.18.2.2 --port=6666 --early_data=true --psk_file=./psk.txt --protocol=h3 --cert=/etc/ssl/certs/server.crt --key=/etc/ssl/private/server.key & perf stat -o proxygen/perf-data/perf-${base_name}${mode}-server.data -x, -v -e instructions,cycles,cache-misses,cache-references,ref-cycles,mem-loads,mem-stores,page-faults,cpu-clock -p ${!} ./proxygen/wait-for-process.sh ${!}"
+            echo "sleeping for 30 seconds"
+            sleep 30
             docker exec -d -t -w /usr/src/proxygen my-running-client bash -c "pkill -f hq"
             echo "running the client"
-            docker exec -t -w /usr/src/proxygen my-running-client bash -c "perf stat -o perf-data/perf-${base_name}${mode}.data -x, -v -e instructions,cycles,cache-misses,cache-references,ref-cycles,mem-loads,mem-stores,page-faults,cpu-clock python3 run-0-rtt-exp.py ${mode} 1 ${base_name}${mode} && chmod 777 -R ${base_name}${mode} perf-${base_name}${mode}.data perf-${base_name}${mode}-server.data" > ${base_name}-run.logs
+            # docker exec -t -w /usr/src/proxygen my-running-client bash -c "perf stat -o perf-data/perf-${base_name}${mode}.data -x, -v -e instructions,cycles,cache-misses,cache-references,ref-cycles,mem-loads,mem-stores,page-faults,cpu-clock -a -C 0-7 python3 run-0-rtt-exp.py ${mode} ${processes} ${base_name}${mode} && chmod 777 -R ${base_name}${mode} perf-${base_name}${mode}.data perf-${base_name}${mode}-server.data" > ${base_name}-run.logs
+            # docker exec -t -w /usr/src/proxygen my-running-client bash -c "python3 run-0-rtt-exp.py ${mode} ${processes} ${base_name}${mode} & perf stat -o perf-data/perf-${base_name}${mode}.data -x, -v -e instructions,cycles,cache-misses,cache-references,ref-cycles,mem-loads,mem-stores,page-faults,cpu-clock -p ${!} ./wait-for-process.sh ${!}" > ${base_name}-run.logs
+            docker exec -t -w /usr/src/proxygen my-running-client bash -c "./client-command.sh ${mode} ${processes} ${base_name}" > ${base_name}-run.logs
+            docker exec -t -w /usr/src/proxygen my-running-client bash -c "chmod 777 -R ${base_name}${mode} perf-${base_name}${mode}.data perf-${base_name}${mode}-server.data" > ${base_name}-run.logs
             echo "finished the client"
             sleep 5
             docker exec -d -t -w /usr/src/ my-proxygen-server-0 bash -c "pkill -f hq --signal SIGINT"

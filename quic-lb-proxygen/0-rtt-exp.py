@@ -186,6 +186,7 @@ def get_values_from_qlogs(qlogs_folder, num_iterations):
     statistics = {c: statistics[c][:min_length] for c in configurations}
     df = pd.DataFrame(statistics)
     # df = pd.DataFrame({'0-RTT': zerortt_time_difference, '1-RTT': onertt_time_difference})
+    print("saving results to csv")
     df.to_csv(f'{qlogs_folder}.csv', index=False)
     return statistics["0_rtt"], statistics["1_rtt"]
 
@@ -275,11 +276,11 @@ def main():
     # get the time differences from the qlogs
     exp = sys.argv[1]
     qlogs_folder = f'./{exp}'
-    num_iterations = 1000000
-    # zerortt_time_difference, onertt_time_difference = get_values_from_qlogs(qlogs_folder, num_iterations)
+    num_iterations = 100000
+    zerortt_time_difference, onertt_time_difference = get_values_from_qlogs(qlogs_folder, num_iterations)
 
     # zerortt_time_difference, onertt_time_difference = get_values_from_file('sequential-time-differences.csv')
-    zerortt_time_difference, onertt_time_difference = get_values_from_file(qlogs_folder + '.csv')
+    # zerortt_time_difference, onertt_time_difference = get_values_from_file(qlogs_folder + '.csv')
     # turn differences into milliseconds from microseconds
     zerortt_time_difference = [d / 1000 for d in zerortt_time_difference]
     onertt_time_difference = [d / 1000 for d in onertt_time_difference]
