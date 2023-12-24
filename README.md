@@ -48,12 +48,19 @@ signed by any CA, they are self-signed certificates.
 
 ## 0-RTT VS 1-RTT
 To test the difference between 0-RTT and 1-RTT in terms of latency, the experiment will be done by deploying the 
-client and server in the same docker container (`my-proxygen-server-0`) so that the network round-trip latency will be
+client and server in the two different docker containers (`my-running-client` and `my-proxygen-server-0`) so that the network round-trip latency will be
 as close to 0 as possible.
 The evaluation is of the time it takes for the server to generate a new key and send it to the client, so that the client
 can then send its request using 1-RTT packet, vs the time it takes for the client to send its request using 0-RTT packet,
 which is encrypted using a key from the previous connection (saved in the `psk.txt` file).
 
+To run the whole experiment, including running the containers and saving
+the results in files, run the following command:
+```bash
+./run-exps.sh
+```
+
+## detailed explanation of scripts
 To start the experiment, first deploy the server:
 ```bash
 docker-compose up -d my-proxygen-server-0
