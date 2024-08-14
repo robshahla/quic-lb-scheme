@@ -1,5 +1,11 @@
 # Load Balancing Proxygen
 
+This repository contains the code for simulating a QUIC load balancer that forwards requests to multiple servers. The servers are implemented using [Proxygen](https://github.com/facebook/proxygen). Two load balancers are implemented: one in Python and one in C++.
+
+Each of the load balancer and servers are deployed in separate docker containers. The load balancer forwards the requests to one of the servers (based on the load balancing algorithm), and the server sends the response back to the client in a direct server return (DSR) manner. This means that the server sends the response directly to the client bypassing the load balancer. To simulate this, the server uses a NAT to change the source IP address of the response packets to the IP address of the load balancer.
+
+## Run
+
 To run the containers, run the following command:
 ```bash
 docker-compose up -d
@@ -8,7 +14,7 @@ docker-compose up -d
 Make sure that the docker images `my-load-balancer` and `my-proxygen` are built before running the containers.
 <!-- TODO: add explanation about the builkd of the docker images. -->
 
-## Deploy
+
 To test the load balancing, first deploy the load balancer:
 ```bash
 docker exec -it my-load-balancer /bin/bash
